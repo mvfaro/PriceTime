@@ -1,0 +1,10 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="PriceTimeBenchmarks/PriceTimeBenchmarks.vcxproj" Id="77acc97d-a493-4d2c-be08-12fc2404e6e1" />
+  <Project Path="PriceTimeCLI/PriceTimeCLI.vcxproj" Id="4cb548cc-c348-41bb-83e6-8bf5c316d7b9" />
+  <Project Path="PriceTimeEngine/PriceTimeEngine.vcxproj" Id="0efd58a8-d298-4fd4-adf2-9e65a822c968" />
+  <Project Path="PriceTimeTests/PriceTimeTests.vcxproj" Id="81a58c2f-0c8f-4785-80de-98ac2b3ee025" />
+</Solution>
