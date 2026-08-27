@@ -50,7 +50,9 @@ Price levels are stored in ordered maps, orders at a price are stored in linked 
 
 ### Container choices
 
-`std::map` was selected for sorted, potentially sparse price levels. `std::list` provides FIFO ordering, stable iterators, and constant-time removal when combined with the order-ID index. This version prioritises correctness and clarity. A production-oriented variant could use bounded tick-indexed levels, intrusive queues, and preallocated order storage after profiling.
+`std::map` was selected for sorted, potentially sparse price levels. `std::list` provides FIFO ordering and stable iterators. The unordered order-ID index provides average constant-time lookup, after which removing an order from an existing list is constant time. If a cancellation empties a price level, removing that level from the ordered map is `O(log P)`, where `P` is the number of active price levels.
+
+This version prioritises correctness and clarity. A production-oriented variant could use bounded tick-indexed levels, intrusive queues, and preallocated order storage after profiling. Tick-indexed storage can improve locality, but its memory use grows with the represented price range; sparse or wide-range instruments may require a windowed layout or a map-based fallback.
 
 ## Solution structure
 
@@ -164,19 +166,31 @@ These are synthetic single-threaded development benchmarks, not exchange-product
 - Trades execute at the resting maker order's price.
 - An unfilled incoming remainder rests in the book.
 - A fully filled order is removed from both its price level and ID index.
-- Modification cancels and resubmits an order, so it loses its previous time priority.
+- Version 1 implements every modification as cancellation followed by resubmission, so the order loses its previous time priority. A future venue-style implementation could reduce quantity in place while retaining priority, while price changes or quantity increases would requeue the order.
+- Order IDs are scoped per symbol because each `OrderBook` owns its own ID index. The same numeric ID may therefore exist simultaneously in different symbol books.
 
-## Current scope and future work
+## Current scope and roadmap
 
-Version 1 deliberately focuses on the matching-engine core. Possible future extensions include:
+Version 1 deliberately focuses on a correct, testable matching-engine core. Planned extensions are prioritised as follows.
 
-- Market, IOC, FOK, and post-only order types
-- Multithreaded order ingestion
-- Network protocol or REST/WebSocket gateway
-- Persistent event logging and replay
-- Allocation-aware containers or object pools
-- Profiling-guided latency optimisation
-- Continuous integration on GitHub Actions
+### Near-term engineering work
+
+- Add a cross-platform CMake build with Linux support using GCC and Clang.
+- Add GitHub Actions builds and tests for Windows and Linux, including AddressSanitizer and UndefinedBehaviorSanitizer checks on Linux.
+- Redesign isolated benchmarks around warmed, batched operations so setup and timer-control overhead are amortised consistently.
+- Add a latency-distribution harness reporting p50, p99, and p99.9 on native Linux rather than treating aggregate benchmark medians as production tail latency.
+- Add generated order-flow tests that validate book invariants after every operation, including uncrossed books, aggregate-quantity consistency, index size, and conservation of traded quantity.
+- Refine modification semantics so eligible quantity reductions retain queue priority.
+
+### Longer-term exchange features and optimisation
+
+- Add participant or account identifiers with configurable self-trade prevention.
+- Add market, IOC, FOK, and post-only order types.
+- Add persistent event logging, deterministic replay, and recovery tests.
+- Separate a deterministic single-writer matching core from multithreaded order-ingress and market-data components.
+- Add a network protocol or REST/WebSocket gateway.
+- Compare the current sparse map/list design with allocation-aware containers, object pools, intrusive queues, and bounded tick-indexed price levels.
+- Use native Linux profiling tools such as `perf` to guide changes using cache misses, branch misses, and instructions-per-cycle measurements.
 
 ## License
 
